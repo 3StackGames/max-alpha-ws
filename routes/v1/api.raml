@@ -1,0 +1,90 @@
+#%RAML 1.0
+title: Maximum Alpha REST API
+version: v1
+baseUri: http://localhost:3000/api/{version}
+mediaType: application/json
+securitySchemes:
+  - jwt:
+    describedBy:
+      queryParameters:
+        token:
+          description: provide token
+          type: string
+          example: NEED-EXAMPLE-HERE
+          type: x-jwt
+types:
+  User:
+    type: object
+    properties:
+      username:   string
+      password:   string
+      active:     boolean
+      cards:      Card[]
+  Card:
+    type: object
+    properties:
+      name:string
+      type:
+        enum:     [ creature, structure, spell ]
+      cost:       ResourceList
+      text:       string
+      flavorText: string
+  Creature:
+    type: Card
+    properties:
+      attack:     integer
+      health:     integer
+  Structure:
+    type: Card
+    properties:
+      health:     integer
+  Spell:
+    type: Card
+  ResourceList:
+    type: object
+    properties:
+      red:        integer
+      black:      integer
+      green:      integer
+      white:      integer
+      yellow:     integer
+      blue:       integer
+      colorless:  integer
+  Deck:
+    type: object
+    properties:
+      owner:      User
+      mainCards:  Card[]
+      structures: Structure[]
+resourceTypes:
+  collection:
+    usage: This resourceType should be used for any collection of items
+    description: The collection of <<resourcePathName>>
+    get:
+      description: Get all <<resourcePathName>>, optionally filtered
+    post:
+      description: Create a new <<resourcePathName | !singularize>>
+traits:
+  secured:
+    queryParameters:
+      token:
+        description: A valid <<tokenName>> is required
+
+/authenticate:
+  /login:
+    post:
+      description: login endpoint
+/users/{userId}:
+  type: User
+  get:
+  post:
+  put:
+/decks:
+  type: Deck
+  get:
+    queryParameters:
+      deckId:     string
+      playerId:   string
+  post:
+  put:
+  delete:
