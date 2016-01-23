@@ -6,12 +6,20 @@ var authController = require('../../controllers/authenticate')
 
 router.get('/', controller.get)
 
-router.post('/', controller.isUsernameTaken)
-router.post('/', controller.post)
+router.post('/', 
+    controller.isUsernameTaken,
+    controller.post
+)
 
-router.put('/', controller.isUsernameTaken)
-router.put('/', authController.isAuthenticated, controller.put)
+router.put('/', 
+    authController.isAuthenticated,
+    controller.isUsernameTaken,
+    controller.put
+)
 
-router.delete('/', authController.isAuthenticated, controller.delete)
+router.delete('/', 
+    authController.isAuthenticated,
+    controller.delete
+)
 
 module.exports = router
