@@ -33,7 +33,12 @@ mod.get = function (req, res) {
     var deckId = req.query.deckId
     var ownerId = req.query.userId
     var name = req.query.name
-    getDecks(deckId, ownerId, name, function(err, decks) {
+    
+    var query = {}
+    if(deckId) query._id = deckId
+    if(ownerId) query.owner = ownerId
+    if(name) query.name = name
+    Deck.find(query, function(err, decks) {
         if (err) throw err
         var processedDecks = decks.map(function(deck) {
             return deck.process()
@@ -42,98 +47,115 @@ mod.get = function (req, res) {
     })
 }
 
-function getDecks(deckId, ownerId, name, cb) {
-    var query = {}
-    if(deckId) query._id = deckId
-    if(ownerId) query.owner = ownerId
-    if(name) query.name = name
-    Deck.find(query, function(err, decks) {
-        cb(null, decks)
-    })
-}
-
 mod.post = function (req, res) {
     var owner = new mongoose.Types.ObjectId(req.userId)
-    
     var name = req.body.name
-    var mainCardIds = req.body.mainCards
-    var structureIds = req.body.structures
+    var mainCards = req.mainCards
+    var structures = req.structures
     
-    if(!name || !mainCardIds || !structureIds) {
+    if(!name || !mainCards || !structures) {
         res.status(400).json(MISSING_PROPERTIES_RESPONSE)
         return
     }
     
-    if(!isValidName(name)) {
-        res.status(400).json(NAME_LENGTH_RESPONSE)
-        return
-    }
-    
-    if(!Array.isArray(mainCardIds) || !Array.isArray(structureIds)) {
-        res.status(400).json(CARD_LISTS_NOT_ARRAYS_RESPONSE)
-        return
-    }
-    
-    var mainCards = mainCardIds.map(function(mainCardId) {
-        return new mongoose.Types.ObjectId(mainCardId)
+    var deck = new Deck({
+        name: name,
+        owner: owner,
+        mainCards: mainCards,
+        structures: structures
     })
     
-    var structures = structureIds.map(function(structureId) {
-        return new mongoose.Types.ObjectId(structureId)
-    })
-    
-    getDecks(null, owner, name, function(err, conflictingDecks) {
-        if(conflictingDecks.length > 0) {
-            res.status(400).json(NAME_TAKEN_RESPONSE)
-            return
-        }
-        
-        var deck = new Deck({
-            name: name,
-            owner: owner,
-            mainCards: mainCards,
-            structures: structures
-        })
-        
-        deck.save(function(err, deck) {
-            if (err) throw err
-            res.status(201).json(new Response(deck.process()))
-        })
+    deck.save(function(err, deck) {
+        if (err) throw err
+        res.status(201).json(new Response(deck.process()))
     })
 }
 
 mod.put = function (req, res) {
-   var owner = new mongoose.Types.ObjectId(req.userId)
-   var deckId = req.body.id
+   var deck = req.deck
    var name = req.body.name
-   var mainCardIds = req.body.mainCards
-   var structureIds = req.body.structures
+   var mainCards = req.mainCards
+   var structures = req.structures
    
-   if(!name && !mainCardIds && !structureIds) {
+   if(!name && !mainCards && !structures) {
        res.status(400).json(NO_CHANGES_RESPONSE)
        return
    }
-   
-   if(name && !isValidName(name)) {
-        res.status(400).json(NAME_LENGTH_RESPONSE)
-        return
-    }
+    
+    if(mainCards) deck.mainCards = mainCards
+    if(structures) deck.structures = structures
+    if(name) deck.name = name
+    
+    deck.save(function(err, deck) {
+        if (err) throw err
+        res.json(new Response(deck.process()))
+    })
+}
 
+mod.delete = function (req, res) {
+    var deck = req.deck
+    
+    deck.remove(function(err) {
+        if (err) throw err
+        res.status(204).send()
+    })
+}
+
+/**
+ * VALIDATION METHODS
+ */
+
+mod.convertCardLists = function (req, res, next) {
+    var mainCardIds = req.body.mainCards
+    var structureIds = req.body.structures
+    
     if((mainCardIds && !Array.isArray(mainCardIds)) || (structureIds && !Array.isArray(structureIds))) {
         res.status(400).json(CARD_LISTS_NOT_ARRAYS_RESPONSE)
+    } else {
+        if(mainCardIds) req.mainCards = mainCardIds.map(function(mainCardId) {
+            return new mongoose.Types.ObjectId(mainCardId)
+        })
+        
+        if(structureIds) req.structures = structureIds.map(function(structureId) {
+            return new mongoose.Types.ObjectId(structureId)
+        })
+        next()
+    }
+}
+
+mod.isDeckNameFree = function (req, res, next) {
+    var name = req.body.name
+    if(!name) {
+        next()
         return
     }
-    
-    var mainCards = null
-    if(mainCardIds) mainCards = mainCardIds.map(function(mainCardId) {
-        return new mongoose.Types.ObjectId(mainCardId)
+    var userId = req.userId
+    Deck.find( { owner: userId, name: name }, function(err, conflictingDecks) {
+        if(conflictingDecks.length > 0) {
+            res.status(400).json(NAME_TAKEN_RESPONSE)
+            return
+        }
+        next()
     })
-    
-    var structures = null
-    if(structureIds) structures = structureIds.map(function(structureId) {
-        return new mongoose.Types.ObjectId(structureId)
-    })
-    
+}
+
+mod.isDeckNameValid = function (req, res, next) {
+    var name = req.body.name
+    if(name) {
+        if(name.length >= Deck.NAME_LENGTH.min && name.length <= Deck.NAME_LENGTH.max) {
+            next()
+        } else {
+            res.status(400).json(NAME_LENGTH_RESPONSE)
+            return
+        }
+    } else {
+        next()
+    } 
+}
+
+mod.getDeckForModification = function(req, res, next) {
+    var deckId = req.body.id
+    var userId = req.userId
     Deck.findById(deckId, function(err, deck) {
         if(err) throw err
         
@@ -142,58 +164,11 @@ mod.put = function (req, res) {
             return
         }
         
-        if(deck.owner.equals(owner)) {
+        if(!deck.owner.equals(userId)) {
             res.status(403).json(NOT_DECK_OWNER_RESPONSE)
             return
         }
-        
-        if(mainCards) deck.mainCards = mainCards
-        if(structures) deck.structures = structures
-        if(name) {
-            getDecks(null, owner, name, function(err, conflictingDecks) {
-                if (err) throw err
-                if(conflictingDecks.length > 1) {
-                    //greater than 1, because this one's name will conflict
-                    res.status(400).json(NAME_TAKEN_RESPONSE)
-                    return
-                }
-                deck.name = name
-                
-                deck.save(function(err, deck) {
-                    if (err) throw err
-                    res.json(new Response(deck.process()))
-                })
-            })
-        } else {
-            deck.save(function(err, deck) {
-                if (err) throw err
-                res.json(new Response(deck.process()))
-            })
-        }
+        req.deck = deck
+        next()
     })
-}
-
-mod.delete = function (req, res) {
-    var owner = new mongoose.Types.ObjectId(req.userId)
-    var deckId = req.body.id
-    
-    Deck.findById(deckId, function(err, deck) {
-        if (err) throw err
-        if(!deck) {
-            res.status(400).json(DECK_NOT_FOUND_RESPONSE)
-            return
-        }
-        if(!deck.owner.equals(owner)) {
-            res.status(403).json(NOT_DECK_OWNER_RESPONSE)
-            return
-        }
-        deck.remove(function(err) {
-            if (err) throw err
-            res.status(204).send()
-        })
-    })
-}
-
-function isValidName(name) {
-    return name && name.length >= Deck.NAME_LENGTH.min && name.length <= Deck.NAME_LENGTH.max
 }
