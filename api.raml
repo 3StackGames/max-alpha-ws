@@ -230,9 +230,11 @@ traits:
       userId:
         type: string
         required: false
+      name:
+        type: string
+        required: false
     responses:
       200:
-        #Todo
         body:
           application/json:
             type: DecksResponse
@@ -252,12 +254,10 @@ traits:
             required: true
     responses:
       201:
-        #Todo
         body:
           application/json:
             type: UserResponse
       400:
-        #Todo
         description: Invalid Input
         body:
           application/json:
@@ -281,12 +281,10 @@ traits:
             required: false
     responses:
       200:
-        #Todo
         body:
           application/json:
             type: DeckResponse
       400:
-        #Todo
         body:
           application/json:
             type: Response

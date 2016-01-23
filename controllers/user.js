@@ -20,7 +20,6 @@ var USER_NOT_FOUND_RESPONSE = new Response(null, USER_NOT_FOUND_ERROR)
 var NO_CHANGES_ERROR = new Error('No Changes Submitted')
 var NO_CHANGES_RESPONSE = new Response(null, NO_CHANGES_ERROR)
 
-/* API Welcome */
 mod.isUsernameTaken = function (req, res, next) {
     if(!req.body.username) {
         next()
@@ -36,41 +35,33 @@ mod.isUsernameTaken = function (req, res, next) {
 }
 
 mod.get = function (req, res) {
-    if(req.query.userId) {
-        User.findById(req.query.userId, function(err, user) {
-            if(err) {
-                res.json(USER_NOT_FOUND_RESPONSE)
-                return
-            }
-            var filteredUser = userService.filterPublic(user);
-            res.json(new Response([filteredUser]))
-        })
-    } else if(req.query.username) {
-        var username = cleanUsername(req.query.username)
-        User.findOne({ username: username}, function(err, user) {
-            if(err) {
-                res.json(USER_NOT_FOUND_RESPONSE)
-                return
-            }
-            var filteredUser = userService.filterPublic(user);
-            res.json(new Response([filteredUser]))
-        })
-    } else {
-        User.find().exec(function(err, users) {
-            if(err) throw err
-            res.json(new Response(users.map(userService.filterPublic)))
-        })
+    var userId = req.query.userId
+    var username = cleanUsername(req.query.username)
+    var query = {}
+    if(userId) {
+        query._id = userId
+    } else if(username) {
+        query.username = username
     }
+    User.find(query, function(err, users) {
+        if (err) throw err
+        
+        var processedUsers = users.map(function(user) {
+            return user.process()
+        })
+        res.json(new Response(processedUsers))
+    })
 }
 
 mod.post = function (req, res) {
     var username = cleanUsername(req.body.username)
     var password = req.body.password
     
-    if(username.length < User.USERNAME_LENGTH.min || username.length > User.USERNAME_LENGTH.max) {
+    //check if provided username and password are invalid
+    if(!isValidUsername(username)) {
         res.status(400).json(new Response(null, USERNAME_LENGTH_ERROR))
         return
-    } else if(password.length < User.PASSWORD_LENGTH.min || password.length > User.PASSWORD_LENGTH.max) {
+    } else if(!isValidPassword(password)) {
         res.status(400).json(new Response(null, PASSWORD_LENGTH_ERROR))
         return
     }
@@ -83,9 +74,9 @@ mod.post = function (req, res) {
     })
     
     newUser.save(function(err, user) {
-        if (err) throw err;
-              
-        var response = new Response(userService.filterAuthenticated(user))
+        if (err) throw err
+        
+        var response = new Response(user.process('owner'))
         res.status(201).json(response)
     })
 }
@@ -101,10 +92,10 @@ mod.put = function (req, res) {
             return
         }
         //check if provided username or password are invalid
-        if(username && (username.length < User.USERNAME_LENGTH.min || username.length > User.USERNAME_LENGTH.max)) {
+        if(username && !isValidUsername(username)) {
             res.status(400).json(new Response(null, USERNAME_LENGTH_ERROR))
             return
-        } else if(password && (password.length < User.PASSWORD_LENGTH.min || password.length > User.PASSWORD_LENGTH.max)) {
+        } else if(password && !isValidPassword(password)) {
             res.status(400).json(new Response(null, PASSWORD_LENGTH_ERROR))
             return
         }
@@ -118,8 +109,7 @@ mod.put = function (req, res) {
         }
         if(username || password) {
             user.save(function(err, user) {
-                var filteredUser = userService.filterAuthenticated(user)
-                res.json(new Response(filteredUser))
+                res.json(new Response(user.process('owner')))
             })
         }
     })
@@ -137,4 +127,12 @@ mod.delete = function (req, res) {
 function cleanUsername(username) {
     if(!username) return null
     return username.toLowerCase().trim()
+}
+
+function isValidUsername(username) {
+    return username && username.length >= User.USERNAME_LENGTH.min && username.length <= User.USERNAME_LENGTH.max
+}
+
+function isValidPassword(password) {
+    return password && password.length >= User.PASSWORD_LENGTH.min && password.length <= User.PASSWORD_LENGTH.max
 }

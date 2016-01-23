@@ -2,6 +2,7 @@ var express = require('express');
 var router = express.Router();
 
 var user = require('./user')
+var deck = require('./deck')
 var authenticate = require('./authenticate')
 /* API Welcome */
 router.get('/', function(req, res, next) {
@@ -12,5 +13,6 @@ router.get('/', function(req, res, next) {
 
 router.use('/authenticate', authenticate)
 router.use('/users', user)
+router.use('/decks', deck)
 
 module.exports = router;

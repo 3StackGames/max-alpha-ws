@@ -29,6 +29,21 @@ UserSchema.pre('save', function(next) {
     })
 })
 
+UserSchema.methods.process = function(role, token) {
+    var detailed = role === 'owner'
+    var obj = this.toObject()
+    //add
+    obj.id = obj._id
+    obj.type = 'users'
+    if(token) obj.token = token
+    //remove
+    delete obj._id
+    delete obj.password
+    delete obj.__v
+    if(!detailed) delete obj.cards
+    return obj
+}
+
 UserSchema.statics.USERNAME_LENGTH = {
     min: 1,
     max: 20

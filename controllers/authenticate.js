@@ -47,8 +47,7 @@ mod.login = function(req, res) {
                     })
 
                     // return the user with the token
-                    var filteredUser = userService.filterAuthenticated(user, token)
-                    var response = new Response(filteredUser)
+                    var response = new Response(user.process('owner', token))
                     res.json(response)
                 }
             })
