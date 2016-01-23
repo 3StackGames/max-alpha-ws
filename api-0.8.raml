@@ -24,13 +24,8 @@ resourceTypes:
       put?:
         description: Update an existing <<resourcePathName | !singularize>>
       delete?:
-        body:
-          application/json:
-            formParameters:
-              id:
-                type: string
         responses:
-          200:
+          204:
             description: delete a <<resourcePathName | !singularize>>
           404:
             description: <<resourcePathName | !singularize>> not found
@@ -188,7 +183,12 @@ traits:
         body:
           application/json:
   delete:
-    #todo
+    #Todo
+    body:
+      application/json:
+        formParameters:
+          id:
+            type: string
 /cards:
   type: collection
   get:

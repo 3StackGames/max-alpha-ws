@@ -13,4 +13,6 @@ router.post('/', controller.post)
 router.put('/', controller.isUsernameTaken)
 router.put('/', authController.isAuthenticated, controller.put)
 
+router.delete('/', authController.isAuthenticated, controller.delete)
+
 module.exports = router

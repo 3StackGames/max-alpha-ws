@@ -19,6 +19,7 @@ var USER_NOT_FOUND_RESPONSE = new Response(null, USER_NOT_FOUND_ERROR)
 
 var NO_CHANGES_ERROR = new Error('No Changes Submitted')
 var NO_CHANGES_RESPONSE = new Response(null, NO_CHANGES_ERROR)
+
 /* API Welcome */
 mod.isUsernameTaken = function (req, res, next) {
     if(!req.body.username) {
@@ -121,6 +122,15 @@ mod.put = function (req, res) {
                 res.json(new Response(filteredUser))
             })
         }
+    })
+}
+
+mod.delete = function (req, res) {
+    User.findById(req.userId, function(err, user) {
+        user.active = false
+        user.save(function(err, user) {
+            res.status(204).send()
+        })
     })
 }
 

@@ -20,6 +20,9 @@ var NO_TOKEN_RESPONSE = new Response(null, NO_TOKEN_ERROR)
 var AUTHENTICATION_FAILED_ERROR = new Error(NOT_AUTHENTICATED, 'Unable to verify token provided')
 var AUTHENTICATION_FAILED_RESPONSE = new Response(null, AUTHENTICATION_FAILED_ERROR)
 
+var USER_DELETED_ERROR = new Error(NOT_AUTHENTICATED, 'User deleted')
+var USER_DELETED_RESPONSE = new Response(null, USER_DELETED_ERROR)
+
 mod.login = function(req, res) {
     User.findOne({
         username: req.body.username.toLowerCase()
@@ -29,6 +32,10 @@ mod.login = function(req, res) {
         if (!user) {
             res.status(400).json(BAD_AUTH_RESPONSE)
         } else if (user) {
+            if(!user.active) {
+                res.json(USER_DELETED_RESPONSE)
+                return
+            }
             // check if password matches
             bcrypt.compare(req.body.password, user.password, function(err, isCorrect) {
                 if(!isCorrect) res.status(400).json(BAD_AUTH_RESPONSE)
@@ -52,14 +59,29 @@ mod.login = function(req, res) {
 mod.isAuthenticated = function (req, res, next) {
     var token = req.body.token || req.query.token || req.headers['x-access-token']
     
-    if(!token) res.status(403).send(NO_TOKEN_RESPONSE)
+    if(!token) {
+        res.status(403).send(NO_TOKEN_RESPONSE)
+        return
+    }
     
     // verifies secret and checks exp
     jwt.verify(token, config.SECRET, function(err, decoded) {      
-        if (err) res.status(403).json(AUTHENTICATION_FAILED_RESPONSE)
+        if (err || !decoded.userId) {
+            res.status(403).json(AUTHENTICATION_FAILED_RESPONSE)
+            return
+        }
         
         // since everything is good, save to request for use in other routes
-        req.userId = decoded.userId    
-        next()
+        req.userId = decoded.userId
+        //make sure user isn't inactive
+        User.findById(req.userId, function(err, user) {
+            if(err) throw err
+            
+            if(!user.active) {
+                res.status(403).json(USER_DELETED_ERROR)
+                return
+            }
+            next()
+        })
     })
 }
