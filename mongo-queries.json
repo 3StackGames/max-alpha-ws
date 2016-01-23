@@ -1,0 +1,42 @@
+
+//Get Deck Cards
+db.decks.aggregate([
+	{
+		$match: {
+			_id: ObjectId("568ec4b9bbdcf16c2c000003")
+		}
+	},
+	{
+		$project: { 
+			mainCards: 1, 
+			structures: 1, 
+			cards: { $setUnion: [ "$mainCards", "$structures" ] },
+			_id: 0
+		}
+	},
+	{
+		$unwind: "$cards"
+	},
+	{
+		$group: {
+			_id: "$cards"
+		}
+	},
+	{
+	   $lookup: {
+		from: "cards",
+		localField: "_id",
+		foreignField: "_id",
+		as: "cards"
+	   }
+	},
+	{
+		$unwind: "$cards"
+	},
+	{ 
+		$group: { 
+			_id: "_id", 
+			cards: { $push : "$cards" }
+		}
+	}
+])

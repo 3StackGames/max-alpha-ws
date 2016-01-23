@@ -23,14 +23,22 @@ var CardSchema = new Schema({
 })
 
 CardSchema.methods.process = function() {
-    var obj = this.toObject()
+    return processObject(this.toObject())
+}
+
+CardSchema.statics.process = function(card) {
+    return processObject(card)
+}
+
+function processObject(card) {
+    var processedCard = card
     //add
-    obj.id = obj._id
+    processedCard.id = processedCard._id
     //remove
-    delete obj._id
-    delete obj.__v
-    delete obj.effects
-    return obj
+    delete processedCard._id
+    delete processedCard.__v
+    delete processedCard.effects
+    return processedCard
 }
 
 module.exports = mongoose.model('Card', CardSchema)
