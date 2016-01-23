@@ -1,17 +1,17 @@
 #%RAML 1.0
-title: Maximum Alpha REST API
+title: Maximum Alpha
 version: v1
-baseUri: http://localhost:3000/api/{version}
-mediaType: application/json
+baseUri: http://localhost/api/{version}
 securitySchemes:
   - jwt:
-    describedBy:
-      queryParameters:
-        token:
-          description: provide token
-          type: string
-          example: NEED-EXAMPLE-HERE
-          type: x-jwt
+      description: JSON Web Token
+      type: x-custom
+      describedBy:
+          queryParameters:
+            token:
+              description: JSON Web Token
+              type: string
+              example: abasf
 types:
   User:
     type: object
@@ -19,16 +19,23 @@ types:
       username:   string
       password:   string
       active:     boolean
-      cards:      Card[]
+  Users:
+    type: object
+    properties:
+      users: User[]
   Card:
     type: object
     properties:
-      name:string
+      name:       string
       type:
-        enum:     [ creature, structure, spell ]
+        enum: [creature, structure, spell]
       cost:       ResourceList
       text:       string
       flavorText: string
+  Cards:
+    type: object
+    properties:
+      cards: Card[]
   Creature:
     type: Card
     properties:
@@ -56,6 +63,10 @@ types:
       owner:      User
       mainCards:  Card[]
       structures: Structure[]
+  Decks:
+    type: object
+    properties:
+      cards: Deck[]
 resourceTypes:
   collection:
     usage: This resourceType should be used for any collection of items
@@ -65,26 +76,73 @@ resourceTypes:
     post:
       description: Create a new <<resourcePathName | !singularize>>
 traits:
-  secured:
-    queryParameters:
-      token:
-        description: A valid <<tokenName>> is required
-
+  - secured:
+      description: Some requests require authentication
+      queryParameters:
+        token:
+          description: A JSON Web Token is required
+          example: token=abasf
 /authenticate:
   /login:
     post:
       description: login endpoint
-/users/{userId}:
-  type: User
+/users:
+  type: collection
   get:
+    queryParameters:
+      userId:
+        type: string
+        required: false
+    responses:
+      200:
+        body:
+          application/json:
+            type: Users
   post:
+    responses:
+      200:
+        body:
+          application/json:
+            type: User
   put:
+    is: secured
+    responses:
+      204:
+  delete:
+    responses:
+      202:
+        description: User gets marked as inactive.
 /decks:
-  type: Deck
+  type: collection
   get:
     queryParameters:
       deckId:     string
-      playerId:   string
+      userId:     string
+    responses:
+      200:
+        body:
+          application/json:
+            type: Deck[]
   post:
+    responses:
+      200:
+        body:
+          application/json:
+            type: User
   put:
+    is: secured
+    responses:
+      204:
   delete:
+    responses:
+      204:
+/cards:
+  type: collection
+  get:
+    queryParameters:
+      deckId:
+        type: string
+        required: false
+      userId:
+        type: string
+        required: false
