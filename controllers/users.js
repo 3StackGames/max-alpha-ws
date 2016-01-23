@@ -20,19 +20,11 @@ var USER_NOT_FOUND_RESPONSE = new Response(null, USER_NOT_FOUND_ERROR)
 var NO_CHANGES_ERROR = new Error('No Changes Submitted')
 var NO_CHANGES_RESPONSE = new Response(null, NO_CHANGES_ERROR)
 
-mod.isUsernameTaken = function (req, res, next) {
-    if(!req.body.username) {
-        next()
-        return
-    }
-    var username = cleanUsername(req.body.username)
-    
-    userService.isUsernameTaken(username)
-    .then(function(isTaken) {
-        if(isTaken) res.status(400).json(new Response(null, USERNAME_TAKEN_ERROR))
-        else next()
-    })  
-}
+var NO_DELETE_ACCESS_ERROR = new Error('No Access', 'Authenticated user doesn\'t have permission to delete user')
+var NO_DELETE_ACCESS_RESPONSE = new Response(null, NO_DELETE_ACCESS_ERROR)
+
+var MISSING_PROPERTIES_ERROR = new Error(INVALID_PROPERTIES, 'Missing either username or password')
+var MISSING_PROPERTIES_RESPONSE = new Response(null, MISSING_PROPERTIES_ERROR)
 
 mod.get = function (req, res) {
     var userId = req.query.userId
@@ -54,15 +46,12 @@ mod.get = function (req, res) {
 }
 
 mod.post = function (req, res) {
-    var username = cleanUsername(req.body.username)
-    var password = req.body.password
+    var username = req.username
+    var password = req.password
     
-    //check if provided username and password are invalid
-    if(!isValidUsername(username)) {
-        res.status(400).json(new Response(null, USERNAME_LENGTH_ERROR))
-        return
-    } else if(!isValidPassword(password)) {
-        res.status(400).json(new Response(null, PASSWORD_LENGTH_ERROR))
+    //make sure both username and password are provided
+    if(!username && !password) {
+        res.status(400).json(MISSING_PROPERTIES_RESPONSE)
         return
     }
     
@@ -82,37 +71,23 @@ mod.post = function (req, res) {
 }
 
 mod.put = function (req, res) {
-    var username = cleanUsername(req.body.username)
-    var password = req.body.password
+    var username = req.username
+    var password = req.password
+    var user = req.user
     
-    User.findById(req.userId, function(err, user) {
-        //check that at a username or password is provided
-        if(!username && !password) {
-            res.status(400).json(NO_CHANGES_RESPONSE)
-            return
-        }
-        //check if provided username or password are invalid
-        if(username && !isValidUsername(username)) {
-            res.status(400).json(new Response(null, USERNAME_LENGTH_ERROR))
-            return
-        } else if(password && !isValidPassword(password)) {
-            res.status(400).json(new Response(null, PASSWORD_LENGTH_ERROR))
-            return
-        }
-        
-        //apply changes
-        if(username) {
-            user.username = username
-        }
-        if(password) {
-            user.password = password
-        }
-        if(username || password) {
-            user.save(function(err, user) {
-                res.json(new Response(user.process('owner')))
-            })
-        }
+    //check that at least a username or password is provided
+    if(!username && !password) {
+        res.status(400).json(NO_CHANGES_RESPONSE)
+        return
+    }
+    //apply changes
+    if(username) user.username = username
+    if(password) user.password = password
+    
+    user.save(function(err, user) {
+        res.json(new Response(user.process('owner')))
     })
+    
 }
 
 mod.delete = function (req, res) {
@@ -123,10 +98,66 @@ mod.delete = function (req, res) {
         })
     })
 }
+/**
+ * Validation methods
+ */
+mod.processUsernameAndPassword = function (req, res, next) {
+    var username = cleanUsername(req.body.username)
+    var password = req.body.password
+    
+    if(username && !isValidUsername(username)) {
+        res.status(400).json(new Response(null, USERNAME_LENGTH_ERROR))
+        return
+    } else if(password && !isValidPassword(password)) {
+        res.status(400).json(new Response(null, PASSWORD_LENGTH_ERROR))
+        return
+    }
+    
+    req.username = username
+    req.password = password
+    next()
+}
 
+mod.isUsernameTaken = function (req, res, next) {
+    var username = req.username
+    if(!username) {
+        next()
+        return
+    }
+    
+    userService.isUsernameTaken(username)
+    .then(function(isTaken) {
+        if(isTaken) res.status(400).json(new Response(null, USERNAME_TAKEN_ERROR))
+        else next()
+    })  
+}
+
+mod.getUserForModification = function (req, res, next) {
+    var userId = req.body.id
+    var currentUserId = req.userId
+    User.findById(userId, function(err, user) {
+        if(err) throw err
+        
+        if(!user) {
+            res.status(404).json(USER_NOT_FOUND_RESPONSE)
+            return
+        }
+        
+        if(!user.owner.equals(currentUserId)) {
+            res.status(403).json(NO_DELETE_ACCESS_RESPONSE)
+            return
+        }
+        req.user = user
+        next()
+    })
+}
+
+/**
+ * Helper Methods
+ */
 function cleanUsername(username) {
-    if(!username) return null
-    return username.toLowerCase().trim()
+    if(username) return username.toLowerCase().trim()
+    else return null
 }
 
 function isValidUsername(username) {
