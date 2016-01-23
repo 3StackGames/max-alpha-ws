@@ -5,12 +5,10 @@ var controller = require('../../controllers/user')
 var authController = require('../../controllers/authenticate')
 
 /* API Welcome */
-router.post('/create', controller.isUsernameTaken)
-router.post('/create', controller.create)
+router.post('/', controller.isUsernameTaken)
+router.post('/', controller.post)
 
-// router.get('/show', authController.isAuthenticated)
-// router.get('/show', controller.show)
-router.get('/show', authController.isAuthenticated, controller.show)
-
+// router.get('/show', authController.isAuthenticated, controller.show)
+router.get('/', controller.get)
 
 module.exports = router

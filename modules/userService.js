@@ -12,3 +12,22 @@ mod.isUsernameTaken = function (username) {
         })
     })
 }
+
+mod.filterPublic = function(user) {
+    return {
+        id: user._doc._id,
+        type: 'users',
+        username: user._doc.username,
+        active: user._doc.active
+    }
+}
+
+mod.filterAuthenticated = function(user, token) {
+    return {
+        id: user._doc._id,
+        type: 'users',
+        username: user._doc.username,
+        active: user._doc.active,
+        token: token
+    }
+}

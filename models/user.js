@@ -29,14 +29,14 @@ UserSchema.pre('save', function(next) {
     })
 })
 
-UserSchema.methods.usernameTaken = function (username, cb) {
-    UserSchema.findOne({ 'username' : username }, function (err, user) {
-        if(err) throw err
-        
-        if(user) cb(false)
-        
-        return cb(true)
-    })
+UserSchema.statics.USERNAME_LENGTH = {
+    min: 1,
+    max: 20
+}
+
+UserSchema.statics.PASSWORD_LENGTH = {
+    min: 3,
+    max: 20
 }
 
 module.exports = mongoose.model('User', UserSchema)

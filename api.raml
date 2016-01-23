@@ -1,0 +1,326 @@
+#%RAML 1.0
+title: max-alpha-ws
+version: v1
+baseUri: http://localhost:3000/api/{version}
+securitySchemes:
+  - jwt:
+      description: JSON Web Token
+      type: x-custom
+      describedBy:
+          queryParameters:
+            token:
+              description: JSON Web Token
+              type: string
+              example: |
+                eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6Imphc29uIiwiaWF0IjoxNDUzNTE0NzAwLCJleHAiOjE0NTM2ODc1MDB9.HuO7rqxkI7KnHTmCdVBsd2pSwybWl6fTh73LRhOnS8E
+types:
+  #
+  #JSON API Generics
+  #
+  Error:
+    type: object
+    properties:
+      title:
+        type: string
+        required: false
+      detail:
+        type: string
+        required: false
+  ResourceObject:
+    type: object
+    properties:
+      id:
+        type: string
+      type:
+        type: string
+  Response:
+    type: object
+    properties:
+      errors:
+        type: Error[]
+        required: false
+  #
+  #Main Types
+  #
+  User:
+    type: ResourceObject
+    properties:
+      username:   string
+      token:
+        type:       string
+        required:   false
+      active:     boolean
+  Card:
+    type: object
+    properties:
+      name:
+        type: string
+      type:
+        enum: [creature, structure, spell]
+      cost:       ResourceList
+      text:
+        type: string
+      flavorText:
+        type: string
+  Creature:
+    type: Card
+    properties:
+      attack:     integer
+      health:     integer
+  Structure:
+    type: Card
+    properties:
+      health:     integer
+  Spell:
+    type: Card
+  ResourceList:
+    type: object
+    properties:
+      red:        integer
+      black:      integer
+      green:      integer
+      white:      integer
+      yellow:     integer
+      blue:       integer
+      colorless:  integer
+  Deck:
+    type: object
+    properties:
+      owner:      User
+      mainCards:  Card[]
+      structures: Structure[]
+  #
+  #Type Responses
+  #
+  UsersResponse:
+    type: Response
+    properties:
+      data: User[]
+  UserResponse:
+    type: Response
+    properties:
+      data: User
+  CardsResponse:
+    type: Response
+    properties:
+      data: Card[]
+  CardResponse:
+    type: Response
+    properties:
+      data: Card
+  DecksResponse:
+    type: Response
+    properties:
+      data: Deck[]
+  DeckResponse:
+    type: Response
+    properties:
+      data: Deck
+resourceTypes:
+  collection:
+    usage: This resourceType should be used for any collection of items
+    description: The collection of <<resourcePathName>>
+    get?:
+      description: Get all <<resourcePathName>>, optionally filtered
+    post?:
+      description: Create a new <<resourcePathName | !singularize>>
+    put?:
+      description: Update an existing <<resourcePathName | !singularize>>
+    delete?:
+      body:
+        application/json:
+          properties:
+            id:
+              type: string
+      responses:
+        200:
+          description: delete a <<resourcePathName | !singularize>>
+        404:
+          description: <<resourcePathName | !singularize>> not found
+traits:
+  - secured:
+      description: Some requests require authentication
+      queryParameters:
+        token:
+          description: A JSON Web Token is required
+          example: token=abasf
+/authenticate:
+  /login:
+    post:
+      description: login endpoint
+      body:
+        application/json:
+          properties:
+            username:
+              type: string
+            password:
+              type: string
+      responses:
+        200:
+          body:
+            application/json:
+              type: UserResponse
+        400:
+          description: bad username or password
+          body:
+            application/json:
+              type: Response
+/users:
+  type: collection
+  get:
+    queryParameters:
+      userId:
+        type: string
+        required: false
+      username:
+        type: string
+        required: false
+    responses:
+      200:
+        body:
+          application/json:
+            type: UsersResponse
+      404:
+        description: User not found
+        body:
+          application/json:
+            type: Response
+  post:
+    body:
+      application/json:
+        properties:
+          username:
+            type: string
+          password:
+            type: string
+    responses:
+      201:
+        body:
+          application/json:
+            type: UserResponse
+      400:
+        description: User properties invalid
+        body:
+          application/json:
+            type: Response
+  put:
+    is: [secured]
+    body:
+      application/json:
+        properties:
+          id:
+            type: string
+            required: true
+          username:
+            type: string
+            required: false
+          password:
+            type: string
+            required: false
+    responses:
+      200:
+        #Todo
+        body:
+          application/json:
+            type: UserResponse
+      400:
+        #Todo
+        description: Bad update information
+        body:
+          application/json:
+            type: Response
+  delete:
+    #todo
+/decks:
+  type: collection
+  get:
+    queryParameters:
+      deckId:
+        type: string
+        required: false
+      userId:
+        type: string
+        required: false
+    responses:
+      200:
+        #Todo
+        body:
+          application/json:
+            type: DecksResponse
+  post:
+    is: [secured]
+    body:
+      application/json:
+        properties:
+          name:
+            type: string
+            required: true
+          mainCards:
+            type: string[]
+            required: true
+          structures:
+            type: string[]
+            required: true
+    responses:
+      201:
+        #Todo
+        body:
+          application/json:
+            type: UserResponse
+      400:
+        #Todo
+        description: Invalid Input
+        body:
+          application/json:
+            type: Response
+  put:
+    is: [secured]
+    body:
+      application/json:
+        properties:
+          id:
+            type: string
+            required: true
+          name:
+            type: string
+            required: false
+          mainCards:
+            type: string[]
+            required: false
+          structures:
+            type: string[]
+            required: false
+    responses:
+      200:
+        #Todo
+        body:
+          application/json:
+            type: DeckResponse
+      400:
+        #Todo
+        body:
+          application/json:
+            type: Response
+  delete:
+    #todo
+/cards:
+  type: collection
+  get:
+    #Todo
+    queryParameters:
+      deckId:
+        type: string
+        required: false
+      userId:
+        type: string
+        required: false
+    responses:
+      200:
+        body:
+          application/json:
+            type: CardsResponse
+      400:
+        description: Invalid deckId or userId
+        body:
+          application/json:
+            type: Response
