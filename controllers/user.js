@@ -16,8 +16,15 @@ var PASSWORD_LENGTH_ERROR = new Error(INVALID_PROPERTIES, 'Password Length Too L
 
 var USER_NOT_FOUND_ERROR = new Error('User Not Found')
 var USER_NOT_FOUND_RESPONSE = new Response(null, USER_NOT_FOUND_ERROR)
+
+var NO_CHANGES_ERROR = new Error('No Changes Submitted')
+var NO_CHANGES_RESPONSE = new Response(null, NO_CHANGES_ERROR)
 /* API Welcome */
 mod.isUsernameTaken = function (req, res, next) {
+    if(!req.body.username) {
+        next()
+        return
+    }
     var username = cleanUsername(req.body.username)
     
     userService.isUsernameTaken(username)
@@ -25,33 +32,6 @@ mod.isUsernameTaken = function (req, res, next) {
         if(isTaken) res.status(400).json(new Response(null, USERNAME_TAKEN_ERROR))
         else next()
     })  
-}
-
-mod.post = function (req, res) {
-    var username = cleanUsername(req.body.username)
-    var password = req.body.password
-    
-    if(username.length < User.USERNAME_LENGTH.min || username.length > User.USERNAME_LENGTH.max) {
-        res.status(400).json(new Response(null, USERNAME_LENGTH_ERROR))
-        return
-    } else if(password.length < User.PASSWORD_LENGTH.min || password.length > User.PASSWORD_LENGTH.max) {
-        res.status(400).json(new Response(null, PASSWORD_LENGTH_ERROR))
-        return
-    }
-    
-    var newUser = new User({
-        username: username,
-        password: password,
-        active: true,
-        cards: []
-    })
-    
-    newUser.save(function(err, user) {
-        if (err) throw err;
-              
-        var response = new Response(userService.filterPublic(user))
-        res.status(201).json(response)
-    })
 }
 
 mod.get = function (req, res) {
@@ -82,6 +62,69 @@ mod.get = function (req, res) {
     }
 }
 
+mod.post = function (req, res) {
+    var username = cleanUsername(req.body.username)
+    var password = req.body.password
+    
+    if(username.length < User.USERNAME_LENGTH.min || username.length > User.USERNAME_LENGTH.max) {
+        res.status(400).json(new Response(null, USERNAME_LENGTH_ERROR))
+        return
+    } else if(password.length < User.PASSWORD_LENGTH.min || password.length > User.PASSWORD_LENGTH.max) {
+        res.status(400).json(new Response(null, PASSWORD_LENGTH_ERROR))
+        return
+    }
+    
+    var newUser = new User({
+        username: username,
+        password: password,
+        active: true,
+        cards: []
+    })
+    
+    newUser.save(function(err, user) {
+        if (err) throw err;
+              
+        var response = new Response(userService.filterAuthenticated(user))
+        res.status(201).json(response)
+    })
+}
+
+mod.put = function (req, res) {
+    var username = cleanUsername(req.body.username)
+    var password = req.body.password
+    
+    User.findById(req.userId, function(err, user) {
+        //check that at a username or password is provided
+        if(!username && !password) {
+            res.status(400).json(NO_CHANGES_RESPONSE)
+            return
+        }
+        //check if provided username or password are invalid
+        if(username && (username.length < User.USERNAME_LENGTH.min || username.length > User.USERNAME_LENGTH.max)) {
+            res.status(400).json(new Response(null, USERNAME_LENGTH_ERROR))
+            return
+        } else if(password && (password.length < User.PASSWORD_LENGTH.min || password.length > User.PASSWORD_LENGTH.max)) {
+            res.status(400).json(new Response(null, PASSWORD_LENGTH_ERROR))
+            return
+        }
+        
+        //apply changes
+        if(username) {
+            user.username = username
+        }
+        if(password) {
+            user.password = password
+        }
+        if(username || password) {
+            user.save(function(err, user) {
+                var filteredUser = userService.filterAuthenticated(user)
+                res.json(new Response(filteredUser))
+            })
+        }
+    })
+}
+
 function cleanUsername(username) {
+    if(!username) return null
     return username.toLowerCase().trim()
 }

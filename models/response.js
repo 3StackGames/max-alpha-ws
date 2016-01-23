@@ -1,3 +1,5 @@
+var Error = require('./error')
+
 module.exports = function(data, errors, meta) {
     if(data) this.data = data
     else if (errors) {

@@ -12,6 +12,14 @@ var userService = require('../modules/userService')
 var BAD_AUTH_ERROR = new Error('Authentication Failed', 'Invalid username and/or password')
 var BAD_AUTH_RESPONSE = new Response(null, BAD_AUTH_ERROR)
 
+var NOT_AUTHENTICATED = 'Not Authenticated'
+
+var NO_TOKEN_ERROR = new Error(NOT_AUTHENTICATED, 'No token was provided')
+var NO_TOKEN_RESPONSE = new Response(null, NO_TOKEN_ERROR)
+
+var AUTHENTICATION_FAILED_ERROR = new Error(NOT_AUTHENTICATED, 'Unable to verify token provided')
+var AUTHENTICATION_FAILED_RESPONSE = new Response(null, AUTHENTICATION_FAILED_ERROR)
+
 mod.login = function(req, res) {
     User.findOne({
         username: req.body.username.toLowerCase()
@@ -27,8 +35,8 @@ mod.login = function(req, res) {
                 else { 
                     // if user is found and password is right
                     // create a token
-                    var token = jwt.sign({ name: user.name, username: user.username }, config.SECRET, {
-                    expiresIn: '2 days' // expires in 24 hours
+                    var token = jwt.sign({ userId: user._id }, config.SECRET, {
+                        expiresIn: '2 days' // expires in 24 hours
                     })
 
                     // return the user with the token
@@ -44,19 +52,14 @@ mod.login = function(req, res) {
 mod.isAuthenticated = function (req, res, next) {
     var token = req.body.token || req.query.token || req.headers['x-access-token']
     
-    if(!token) res.status(403).send({
-        message: 'No token provided.'
-    })
+    if(!token) res.status(403).send(NO_TOKEN_RESPONSE)
     
     // verifies secret and checks exp
     jwt.verify(token, config.SECRET, function(err, decoded) {      
-        if (err) res.status(400).json({
-            success : false,
-            message: 'Failed to authenticate token.'
-        })
+        if (err) res.status(403).json(AUTHENTICATION_FAILED_RESPONSE)
         
         // since everything is good, save to request for use in other routes
-        req.decoded = decoded    
+        req.userId = decoded.userId    
         next()
     })
 }

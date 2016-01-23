@@ -4,15 +4,15 @@ version: v1
 baseUri: http://localhost:3000/api/v1
 securitySchemes:
   - jwt:
-      description: JSON Web Token
+      description: JSON Web Token. Can be passed in the header or body
       type: x-custom
       describedBy:
-          queryParameters:
-            token:
-              description: JSON Web Token
-              type: string
-              example: |
-                eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6Imphc29uIiwiaWF0IjoxNDUzNTE0NzAwLCJleHAiOjE0NTM2ODc1MDB9.HuO7rqxkI7KnHTmCdVBsd2pSwybWl6fTh73LRhOnS8E
+        headers:
+          token:
+            description: JSON Web Token
+            type: string
+            example: |
+              eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6Imphc29uIiwiaWF0IjoxNDUzNTE0NzAwLCJleHAiOjE0NTM2ODc1MDB9.HuO7rqxkI7KnHTmCdVBsd2pSwybWl6fTh73LRhOnS8E
 resourceTypes:
   - collection:
       usage: This resourceType should be used for any collection of items
@@ -104,9 +104,6 @@ traits:
     body:
       application/json:
         formParameters:
-          id:
-            type: string
-            required: true
           username:
             type: string
             required: false
