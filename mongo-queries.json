@@ -40,3 +40,37 @@ db.decks.aggregate([
 		}
 	}
 ])
+
+//get Player cards
+db.users.aggregate([
+	{
+		$match: {
+			_id: ObjectId("5692c8785874ab801b000001")
+		}
+	},
+	{
+		$unwind: "$cards"
+	},
+	{
+		$group: {
+			_id: "$cards"
+		}
+	},
+	{
+	   $lookup: {
+		from: "cards",
+		localField: "_id",
+		foreignField: "_id",
+		as: "cards"
+	   }
+	},
+	{
+		$unwind: "$cards"
+	},
+	{ 
+		$group: { 
+			_id: "_id", 
+			cards: { $push : "$cards" }
+		}
+	}
+])

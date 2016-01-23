@@ -305,12 +305,13 @@ traits:
 /cards:
   type: collection
   get:
-    #Todo
     queryParameters:
       deckId:
+        description: if set, userId should not be
         type: string
         required: false
       userId:
+        description: if set, deckId should not be
         type: string
         required: false
     responses:
@@ -318,7 +319,7 @@ traits:
         body:
           application/json:
             type: CardsResponse
-      400:
+      404:
         description: Invalid deckId or userId
         body:
           application/json:
