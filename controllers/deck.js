@@ -142,7 +142,7 @@ mod.put = function (req, res) {
             return
         }
         
-        if(deck.owner != req.userId) {
+        if(deck.owner.equals(owner)) {
             res.status(403).json(NOT_DECK_OWNER_RESPONSE)
             return
         }
@@ -174,7 +174,24 @@ mod.put = function (req, res) {
 }
 
 mod.delete = function (req, res) {
+    var owner = new mongoose.Types.ObjectId(req.userId)
+    var deckId = req.body.id
     
+    Deck.findById(deckId, function(err, deck) {
+        if (err) throw err
+        if(!deck) {
+            res.status(400).json(DECK_NOT_FOUND_RESPONSE)
+            return
+        }
+        if(!deck.owner.equals(owner)) {
+            res.status(403).json(NOT_DECK_OWNER_RESPONSE)
+            return
+        }
+        deck.remove(function(err) {
+            if (err) throw err
+            res.status(204).send()
+        })
+    })
 }
 
 function isValidName(name) {

@@ -25,9 +25,11 @@ resourceTypes:
         description: Update an existing <<resourcePathName | !singularize>>
       delete?:
         responses:
-          204:
+          204?:
             description: delete a <<resourcePathName | !singularize>>
-          404:
+          403?:
+            description: user doesn't have access to delete this <<resourcePathName | !singularize>>
+          404?:
             description: <<resourcePathName | !singularize>> not found
 traits:
   - secured:
@@ -116,7 +118,8 @@ traits:
         body:
           application/json:
   delete:
-    #todo
+    responses:
+      204:
 /decks:
   type: collection
   get:
@@ -192,6 +195,10 @@ traits:
         formParameters:
           id:
             type: string
+    responses:
+      204:
+      403:
+      404:
 /cards:
   type: collection
   get:
