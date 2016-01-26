@@ -2,6 +2,7 @@ var mod = module.exports = {}
 
 var bcrypt = require('bcrypt')
 var jwt = require('jsonwebtoken')
+var mongoose = require('mongoose')
 
 var config = require('../config')
 var Response = require('../models/response')
@@ -71,7 +72,13 @@ mod.isAuthenticated = function (req, res, next) {
         }
         
         // since everything is good, save to request for use in other routes
-        req.userId = decoded.userId
+        try {
+            req.userId = new mongoose.Types.ObjectId(decoded.userId)
+        } catch (err) {
+            res.status(403).json(AUTHENTICATION_FAILED_RESPONSE)
+            return
+        }
+        
         //make sure user isn't inactive
         User.findById(req.userId, function(err, user) {
             if(err) throw err

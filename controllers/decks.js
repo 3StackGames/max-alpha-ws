@@ -5,6 +5,7 @@ var mongoose = require('mongoose')
 var Response = require('../models/response')
 var Error = require('../models/error')
 var Deck = require('../models/deck')
+var User = require('../models/user')
 
 var INVALID_PROPERTIES = 'Invalid Properties'
 
@@ -29,6 +30,9 @@ var NO_CHANGES_RESPONSE = new Response(null, NO_CHANGES_ERROR)
 var DECK_NOT_FOUND_ERROR = new Error(INVALID_PROPERTIES, 'Deck not found')
 var DECK_NOT_FOUND_RESPONSE = new Response(null, DECK_NOT_FOUND_ERROR)
 
+var USER_DOESNT_OWN_CARDS_ERROR = new Error(INVALID_PROPERTIES, 'User doesn\'t own all the cards in the deck')
+var USER_DOESNT_OWN_CARDS_RESPONSE = new Response(null, USER_DOESNT_OWN_CARDS_ERROR)
+
 mod.get = function (req, res) {
     var deckId = req.query.deckId
     var ownerId = req.query.userId
@@ -48,7 +52,7 @@ mod.get = function (req, res) {
 }
 
 mod.post = function (req, res) {
-    var owner = new mongoose.Types.ObjectId(req.userId)
+    var owner = req.userId
     var name = req.body.name
     var mainCards = req.mainCards
     var structures = req.structures
@@ -169,6 +173,27 @@ mod.getDeckForModification = function(req, res, next) {
             return
         }
         req.deck = deck
+        next()
+    })
+}
+
+mod.userOwnsCards = function (req, res, next) {
+    var userId = req.userId
+    var mainCards = req.mainCards
+    var structures = req.structures
+    
+    User.findById(userId, function (err, user) {
+        function userOwnsCard(card) {
+            return user.cards.indexOf(card) >= 0
+        }
+        if(structures && !mainCards.every(userOwnsCard)) {
+            res.json(USER_DOESNT_OWN_CARDS_RESPONSE)
+            return
+        }
+        if(structures && !structures.every(userOwnsCard)) {
+            res.json(USER_DOESNT_OWN_CARDS_RESPONSE)
+            return
+        }
         next()
     })
 }

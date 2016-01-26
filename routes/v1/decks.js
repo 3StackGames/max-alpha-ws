@@ -11,6 +11,7 @@ router.post('/',
     controller.convertCardLists,
     controller.isDeckNameValid,
     controller.isDeckNameFree,
+    controller.userOwnsCards,
     controller.post
 )
 
@@ -19,6 +20,7 @@ router.put('/',
     controller.convertCardLists,
     controller.isDeckNameValid,
     controller.isDeckNameFree,
+    controller.userOwnsCards,
     controller.getDeckForModification,
     controller.put
 )
