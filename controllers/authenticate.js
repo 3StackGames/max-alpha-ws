@@ -25,6 +25,10 @@ var USER_DELETED_ERROR = new Error(NOT_AUTHENTICATED, 'User deleted')
 var USER_DELETED_RESPONSE = new Response(null, USER_DELETED_ERROR)
 
 mod.login = function(req, res) {
+    if(!req.body.username) {
+        res.status(400).json(BAD_AUTH_RESPONSE)
+        return
+    }
     User.findOne({
         username: req.body.username.toLowerCase()
     }, function(err, user) {
